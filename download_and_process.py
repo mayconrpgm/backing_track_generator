@@ -8,7 +8,7 @@ def main():
     parser.add_argument('url', help="YouTube URL of the video to download")
     parser.add_argument('--output', default='downloads/', help="Output directory for downloads and processing")
     parser.add_argument('--shift', type=int, default=0, help="Pitch shift in semitones")
-    parser.add_argument('--model', default='mdx_extra', help="Demucs model to use for stem separation")
+    parser.add_argument('--model', default='hdemucs_mmi', help="Demucs model to use for stem separation")
 
     args = parser.parse_args()
 
