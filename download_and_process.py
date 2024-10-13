@@ -1,5 +1,6 @@
 import argparse
 import os
+import logging
 from common import download_audio, pitch_shift, separate_stems, create_beat_track, create_backing_track
 
 def main():
@@ -7,7 +8,7 @@ def main():
     parser.add_argument("youtube_url", help="URL of the YouTube video to download audio from.")
     parser.add_argument("--output", default="output", help="Output folder for the processed files.")
     parser.add_argument("--shift", type=int, default=0, help="Number of semitones to shift the audio.")
-    parser.add_argument("--model", default="htdemucs", help="Demucs model to use for stem separation.")
+    parser.add_argument("--model", default="htdemucs_ft", help="Demucs model to use for stem separation.")
     parser.add_argument("--exclude", help="Stem to exclude when creating the backing track (e.g., 'vocals').")
     parser.add_argument("--include-beat", action="store_true", help="Include the beat track in the backing track generation.")
     parser.add_argument("--skip-download", action="store_true", help="Skip downloading if the audio file already exists.")
@@ -30,13 +31,8 @@ def main():
     # Step 5: Create backing track if specified
     if args.exclude:
         backing_track_with_beat = None
-        backing_track_without_beat = create_backing_track(stems_folder, args.exclude, download_folder, include_beat_track=False)
-        if args.include_beat:
-            backing_track_with_beat = create_backing_track(stems_folder, args.exclude, download_folder, include_beat_track=True)
+        backing_track_without_beat = create_backing_track(stems_folder, args.exclude, download_folder, include_beat=args.include_beat, beat_file=beat_track_file)
 
-        print(f"Backing track excluding '{args.exclude}' created: {backing_track_without_beat}")
-        if backing_track_with_beat:
-            print(f"Backing track with beat excluding '{args.exclude}' created: {backing_track_with_beat}")
-
+    logging.info("Finished processing audio!")
 if __name__ == "__main__":
     main()

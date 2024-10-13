@@ -7,7 +7,7 @@ def main():
     parser.add_argument("audio_file", help="Path to the local audio file to process.")
     parser.add_argument("--output", default="output", help="Output folder for the processed files.")
     parser.add_argument("--shift", type=int, default=0, help="Number of semitones to shift the audio.")
-    parser.add_argument("--model", default="htdemucs", help="Demucs model to use for stem separation.")
+    parser.add_argument("--model", default="htdemucs_ft", help="Demucs model to use for stem separation.")
     parser.add_argument("--exclude", help="Stem to exclude when creating the backing track (e.g., 'vocals').")
     parser.add_argument("--include-beat", action="store_true", help="Include the beat track in the backing track generation.")
     
