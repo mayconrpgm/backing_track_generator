@@ -1,39 +1,39 @@
-# process_local_file.py
 import argparse
 import os
-from common import pitch_shift, separate_stems, create_beat_track
+from common import pitch_shift, separate_stems, create_beat_track, create_backing_track
 
 def main():
-    parser = argparse.ArgumentParser(description="Process a local audio file: pitch shift, create beat track, and separate stems.")
-    parser.add_argument('audio_file', help="Path to the local audio file")
-    parser.add_argument('--output', default='processed/', help="Output directory for processing")
-    parser.add_argument('--shift', type=int, default=0, help="Pitch shift in semitones")
-    parser.add_argument('--model', default='mdx_extra', help="Demucs model to use for stem separation")
-
+    parser = argparse.ArgumentParser(description="Process local audio file: pitch shifting, stem separation, and create a backing track.")
+    parser.add_argument("audio_file", help="Path to the local audio file to process.")
+    parser.add_argument("--output", default="output", help="Output folder for the processed files.")
+    parser.add_argument("--shift", type=int, default=0, help="Number of semitones to shift the audio.")
+    parser.add_argument("--model", default="htdemucs", help="Demucs model to use for stem separation.")
+    parser.add_argument("--exclude", help="Stem to exclude when creating the backing track (e.g., 'vocals').")
+    parser.add_argument("--include-beat", action="store_true", help="Include the beat track in the backing track generation.")
+    
     args = parser.parse_args()
 
-    try:
-        output_folder = os.path.join(args.output, os.path.splitext(os.path.basename(args.audio_file))[0])
-        os.makedirs(output_folder, exist_ok=True)
+    # Step 1: Pitch shift if required
+    audio_file = args.audio_file
+    if args.shift != 0:
+        audio_file = pitch_shift(audio_file, args.shift, args.output)
 
-        if args.shift != 0:
-            print(f"Pitch shifting by {args.shift} semitones...")
-            shifted_file = pitch_shift(args.audio_file, args.shift, output_folder)
-            print(f"Pitch-shifted file: {shifted_file}")
-        else:
-            shifted_file = args.audio_file
+    # Step 2: Separate stems using Demucs
+    stems_folder = separate_stems(audio_file, args.model, args.output)
 
-        print("Creating beat track...")
-        beat_track_file = create_beat_track(shifted_file, output_folder)
-        print(f"Beat track created: {beat_track_file}")
+    # Step 3: Create beat track
+    beat_track_file = create_beat_track(audio_file, args.output)
 
-        print("Separating stems...")
-        stems_output = separate_stems(shifted_file, args.model, output_folder)
-        print(f"Stems saved to: {stems_output}")
+    # Step 4: Create backing track if specified
+    if args.exclude:
+        backing_track_with_beat = None
+        backing_track_without_beat = create_backing_track(stems_folder, args.exclude, args.output, include_beat_track=False)
+        if args.include_beat:
+            backing_track_with_beat = create_backing_track(stems_folder, args.exclude, args.output, include_beat_track=True)
 
-        print("Process completed successfully.")
-    except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Backing track excluding '{args.exclude}' created: {backing_track_without_beat}")
+        if backing_track_with_beat:
+            print(f"Backing track with beat excluding '{args.exclude}' created: {backing_track_with_beat}")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

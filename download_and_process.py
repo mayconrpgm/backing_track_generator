@@ -1,38 +1,42 @@
-# download_and_process.py
 import argparse
 import os
-from common import download_audio, pitch_shift, separate_stems, create_beat_track
+from common import download_audio, pitch_shift, separate_stems, create_beat_track, create_backing_track
 
 def main():
-    parser = argparse.ArgumentParser(description="Download audio, pitch shift, create beat track, and separate stems.")
-    parser.add_argument('url', help="YouTube URL of the video to download")
-    parser.add_argument('--output', default='downloads/', help="Output directory for downloads and processing")
-    parser.add_argument('--shift', type=int, default=0, help="Pitch shift in semitones")
-    parser.add_argument('--model', default='hdemucs_mmi', help="Demucs model to use for stem separation")
-
+    parser = argparse.ArgumentParser(description="Download YouTube audio, process pitch shifting, stem separation, and create a backing track.")
+    parser.add_argument("youtube_url", help="URL of the YouTube video to download audio from.")
+    parser.add_argument("--output", default="output", help="Output folder for the processed files.")
+    parser.add_argument("--shift", type=int, default=0, help="Number of semitones to shift the audio.")
+    parser.add_argument("--model", default="htdemucs", help="Demucs model to use for stem separation.")
+    parser.add_argument("--exclude", help="Stem to exclude when creating the backing track (e.g., 'vocals').")
+    parser.add_argument("--include-beat", action="store_true", help="Include the beat track in the backing track generation.")
+    parser.add_argument("--skip-download", action="store_true", help="Skip downloading if the audio file already exists.")
+    
     args = parser.parse_args()
 
-    try:
-        print("Downloading audio...")
-        audio_file, download_folder = download_audio(args.url, args.output)
-        print(f"Audio downloaded: {audio_file}")
+    # Step 1: Download audio
+    audio_file, download_folder = download_audio(args.youtube_url, args.output)
 
-        if args.shift != 0:
-            print(f"Pitch shifting by {args.shift} semitones...")
-            audio_file = pitch_shift(audio_file, args.shift, download_folder)
-            print(f"Pitch-shifted file: {audio_file}")
+    # Step 2: Pitch shift if required
+    if args.shift != 0:
+        audio_file = pitch_shift(audio_file, args.shift, download_folder)
 
-        print("Creating beat track...")
-        beat_track_file = create_beat_track(audio_file, download_folder)
-        print(f"Beat track created: {beat_track_file}")
+    # Step 3: Separate stems using Demucs
+    stems_folder = separate_stems(audio_file, args.model, download_folder)
 
-        print("Separating stems...")
-        stems_output = separate_stems(audio_file, args.model, download_folder)
-        print(f"Stems saved to: {stems_output}")
+    # Step 4: Create beat track
+    beat_track_file = create_beat_track(audio_file, download_folder)
 
-        print("Process completed successfully.")
-    except Exception as e:
-        print(f"Error: {str(e)}")
+    # Step 5: Create backing track if specified
+    if args.exclude:
+        backing_track_with_beat = None
+        backing_track_without_beat = create_backing_track(stems_folder, args.exclude, download_folder, include_beat_track=False)
+        if args.include_beat:
+            backing_track_with_beat = create_backing_track(stems_folder, args.exclude, download_folder, include_beat_track=True)
 
-if __name__ == '__main__':
+        print(f"Backing track excluding '{args.exclude}' created: {backing_track_without_beat}")
+        if backing_track_with_beat:
+            print(f"Backing track with beat excluding '{args.exclude}' created: {backing_track_with_beat}")
+
+if __name__ == "__main__":
     main()

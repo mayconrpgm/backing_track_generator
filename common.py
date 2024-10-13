@@ -52,15 +52,25 @@ def separate_stems(audio_file, model, output_folder):
             os.makedirs(stems_output)
 
         subprocess.run(['demucs', '-n', model, '--mp3', '-o', stems_output, audio_file], check=True)
+
+        # Prefix stem files with the track name
+        track_name = os.path.splitext(os.path.basename(audio_file))[0]
+        for stem_file in os.listdir(output_model_path):
+            if stem_file.endswith('.mp3'):
+                old_path = os.path.join(output_model_path, stem_file)
+                new_path = os.path.join(output_model_path, f"{track_name}_{stem_file}")
+                os.rename(old_path, new_path)
+
         return stems_output
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Stem separation failed: {str(e)}")
+
 
 def create_beat_track(audio_file, output_folder):
     try:
         beat_track_file = os.path.join(output_folder, f"{os.path.splitext(os.path.basename(audio_file))[0]}_beat_track.mp3")
         beat_track_file_mixed = os.path.join(output_folder, f"{os.path.splitext(os.path.basename(audio_file))[0]}_beat_track_mixed.mp3")
-        if os.path.exists(beat_track_file):
+        if os.path.exists(beat_track_file) and os.path.exists(beat_track_file_mixed):
             print(f"Beat track '{beat_track_file}' already exists. Skipping.")
             return beat_track_file
 
@@ -74,13 +84,52 @@ def create_beat_track(audio_file, output_folder):
         # Create a click track
         click_audio = librosa.clicks(frames=beat_frames, sr=sr, length=len(y))
 
+        # Create the initial four beats click track
+        initial_beats_duration = int(4 * (60.0 / tempo) * sr)  # Duration for 4 beats in samples
+        four_beats_click = librosa.clicks(times=[0, 60.0 / tempo, 120.0 / tempo, 180.0 / tempo], sr=sr, length=initial_beats_duration)
+
+        # Concatenate the four beats click and the original click track
+        click_audio = np.concatenate((four_beats_click, click_audio))
+
         # Mix the original audio with the click track
-        mixed_audio = y + click_audio
+        mixed_audio = np.concatenate((np.zeros(initial_beats_duration), y)) + click_audio
 
         # Save the standalone beat track
         sf.write(beat_track_file, click_audio, sr)
-        # Save the beat track
+        # Save the mixed beat track
         sf.write(beat_track_file_mixed, mixed_audio, sr)
         return beat_track_file
     except Exception as e:
         raise RuntimeError(f"Creating beat track failed: {str(e)}")
+
+def create_backing_track(stems_folder, exclude_stem, output_folder, include_beat_track=False):
+    try:
+        stem_files = [os.path.join(stems_folder, f) for f in os.listdir(stems_folder) if f.endswith('.mp3')]
+        stem_files = [f for f in stem_files if exclude_stem not in f]
+
+        if include_beat_track:
+            beat_track_mixed = os.path.join(output_folder, f"{os.path.basename(output_folder)}_beat_track_mixed.mp3")
+            if os.path.exists(beat_track_mixed):
+                stem_files.append(beat_track_mixed)
+
+        if not stem_files:
+            raise RuntimeError(f"No stem files found for backing track creation, excluding '{exclude_stem}'")
+
+        # Load all stem audio files and mix them together
+        mixed_audio = None
+        for stem_file in stem_files:
+            y, sr = librosa.load(stem_file, sr=None)
+            if mixed_audio is None:
+                mixed_audio = y
+            else:
+                mixed_audio += y
+
+        # Normalize mixed audio
+        mixed_audio = mixed_audio / np.max(np.abs(mixed_audio))
+
+        # Save the final backing track
+        backing_track_file = os.path.join(output_folder, f"backing_track_excluding_{exclude_stem}.mp3")
+        sf.write(backing_track_file, mixed_audio, sr)
+        return backing_track_file
+    except Exception as e:
+        raise RuntimeError(f"Creating backing track failed: {str(e)}")
