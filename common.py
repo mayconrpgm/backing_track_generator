@@ -4,6 +4,7 @@ import librosa
 import soundfile as sf
 import numpy as np
 import logging
+import re
 from pytubefix import YouTube
 from pathlib import Path
 
@@ -14,11 +15,11 @@ def download_audio(youtube_url, output_path):
     try:
         logging.info(f"Starting download of audio from URL: {youtube_url}")
         yt = YouTube(youtube_url)
-        video_title = yt.title
-        download_folder = os.path.join(output_path, video_title)
+        file_name = sanitize_folder_name(yt.title)
+        download_folder = os.path.join(output_path, file_name)
         os.makedirs(download_folder, exist_ok=True)
 
-        mp3_file = os.path.join(download_folder, f"{video_title}.mp3")
+        mp3_file = os.path.join(download_folder, f"{file_name}.mp3")
         if os.path.exists(mp3_file):
             logging.info(f"Audio file '{mp3_file}' already exists. Skipping download.")
             return mp3_file, download_folder
@@ -135,6 +136,7 @@ def create_backing_track(stems_folder, exclude_stem, output_folder, include_beat
             return backing_track_file
         
         # List all stem files in the stems folder
+        logging.info(f"Checking stems folder: {stems_folder}")
         stem_files = [os.path.join(stems_folder, f) for f in os.listdir(stems_folder) if f.endswith('.mp3')]
 
         # Filter out the stem file to be excluded
@@ -175,3 +177,19 @@ def create_backing_track(stems_folder, exclude_stem, output_folder, include_beat
         logging.error(f"Backing track creation failed: {str(e)}")
         raise RuntimeError(f"Backing track creation failed: {str(e)}")
 
+def sanitize_folder_name(folder_name):
+    """
+    Sanitizes a string to make it suitable for use as a folder name.
+    Removes or replaces invalid characters and trims whitespace.
+    
+    Args:
+        folder_name (str): The original folder name.
+    
+    Returns:
+        str: The sanitized folder name.
+    """
+    # Replace invalid characters with an underscore
+    sanitized_name = re.sub(r'[\\/:*?"<>|]', '_', folder_name)
+    # Trim leading and trailing whitespace
+    sanitized_name = sanitized_name.strip()
+    return sanitized_name

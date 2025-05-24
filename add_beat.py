@@ -72,12 +72,12 @@ def add_beats_to_audio_v2(input_file, output_file, num_beats=4):
     print(f"Audio saved to {output_file} with {num_beats} beats added at the detected tempo of {tempo} BPM.")
 
 # Example usage
-input_audio_folder = 'input_path'
-input_file_name = 'input_file'
+input_audio_folder = 'D:\Projetos\Backing Track Generator\output\Panama 2015 Remaster'
+input_file_name = 'Panama 2015 Remaster_backing_track_without_other.mp3'
 input_audio_path = os.path.join(input_audio_folder, input_file_name)
 output_audio_path = os.path.join(input_audio_folder, input_file_name.replace('.mp3', '_with_start_beat.mp3'))
 output_audio_path_v2 = os.path.join(input_audio_folder, input_file_name.replace('.mp3', '_with_start_beat_v2.mp3'))
 
 #add_start_beat_to_audio(input_audio_path, output_audio_path)
-add_beats_to_audio_v2(input_audio_path, output_audio_path_v2, num_beats=8)
+add_beats_to_audio_v2(input_audio_path, output_audio_path_v2, num_beats=4)
 

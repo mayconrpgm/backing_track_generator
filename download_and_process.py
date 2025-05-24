@@ -30,6 +30,7 @@ def main():
 
     # Step 5: Create backing track if specified
     if args.exclude:
+        logging.info(f"Generating track excluding [{args.exclude}]...")
         backing_track_with_beat = None
         backing_track_without_beat = create_backing_track(stems_folder, args.exclude, download_folder, include_beat=args.include_beat, beat_file=beat_track_file)
 
