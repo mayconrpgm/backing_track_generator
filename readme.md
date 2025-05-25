@@ -31,41 +31,45 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Download and Process YouTube Audio
-To download a YouTube video, apply pitch shifting, separate stems, create a beat track, and optionally generate a backing track:
+### Download and Process YouTube Audio or Local File
+To process audio (YouTube or local), apply pitch shifting, separate stems, create a beat track, and optionally generate a backing track:
 
 ```
-python download_and_process.py <YouTube_URL> --output <output_folder> --shift <semitones> --model <demucs_model> --exclude <stem_to_exclude> --include-beat`
+python btg_cli.py --youtube-url <YouTube_URL> --output <output_folder> --shift <semitones> --model <demucs_model> --exclude <stem_to_exclude> --include-beat --add-start-beat --start-beat-clicks 4
 ```
 
-- `YouTube_URL`: The URL of the YouTube video.
-- `output_folder`: Where to save processed files.
-- `shift`: Number of semitones to shift up or down.
-- `model`: Demucs model for separation.
-- `exclude`: Stem to exclude when creating the backing track (e.g., `vocals`).
-- `include-beat`: Flag to add the beat track to the backing track.
-
-### Process Local Audio File
-To process a local audio file with the same options:
+or for a local file:
 
 ```
-python process_local_file.py <audio_file_path> --output <output_folder> --shift <semitones> --model <demucs_model> --exclude <stem_to_exclude> --include-beat
+python btg_cli.py --file-name <audio_file_path> --output <output_folder> --shift <semitones> --model <demucs_model> --exclude <stem_to_exclude> --include-beat --add-start-beat --start-beat-clicks 4
 ```
 
+- `--youtube-url`: The URL of the YouTube video.
+- `--file-name`: Path to a local audio file.
+- `--output`: Where to save processed files.
+- `--shift`: Number of semitones to shift up or down.
+- `--model`: Demucs model for separation.
+- `--exclude`: Stem to exclude when creating the backing track (e.g., `vocals`).
+- `--include-beat`: If set, generates both backing tracks with and without the beat track included.
+- `--add-start-beat`: If set, adds a starting metronome beat to all output tracks (beat track, backing track with and without beat).
+- `--start-beat-clicks`: Number of clicks for the starting beat (default: 4).
+
+**Note:**
+- When `--include-beat` is set, both versions of the backing track (with and without the beat track) are generated.
+- When `--add-start-beat` is set, the start beat is added to the beat track, the backing track without beat, and the backing track with beat.
 
 ## Example Workflows
 
-### 1. Download a YouTube Song and Create a Voice Backing Track
+### 1. Download a YouTube Song and Create a Voice Backing Track with Start Beat
 
 ```
-python download_and_process.py "https://www.youtube.com/watch?v=example" --output music_output --shift -2 --model htdemucs --exclude vocals --include-beat
+python btg_cli.py --youtube-url "https://www.youtube.com/watch?v=example" --output music_output --shift -2 --model htdemucs --exclude vocals --include-beat --add-start-beat --start-beat-clicks 4
 ```
 
-
-### 2. Process a Local File and Create a Drumless Backing Track
+### 2. Process a Local File and Create a Drumless Backing Track with Start Beat
 
 ```
-python process_local_file.py "my_song.mp3" --output music_output --shift 3 --model htdemucs --exclude drums
+python btg_cli.py --file-name "my_song.mp3" --output music_output --shift 3 --model htdemucs --exclude drums --include-beat --add-start-beat --start-beat-clicks 4
 ```
 
 ## Additional Information

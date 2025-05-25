@@ -67,17 +67,20 @@ def separate_stems(audio_file, model, output_folder):
         # Run Demucs to separate stems
         subprocess.run(['demucs', '-n', model, '--mp3', '-o', stems_output, audio_file], check=True)
 
-        # Rename stem files to include the original track name as prefix
-        # track_name = os.path.splitext(os.path.basename(audio_file))[0]
-        # output_model_path = os.path.join(stems_output, model)
-        # for file_name in os.listdir(output_model_path):
-        #     old_file_path = os.path.join(output_model_path, file_name)
-        #     new_file_name = f"{track_name}_{file_name}"
-        #     new_file_path = os.path.join(stems_output, new_file_name)
-        #     os.rename(old_file_path, new_file_path)
-        #     logging.info(f"Renamed '{old_file_path}' to '{new_file_path}'")
+        # Special handling for htdemucs_ft model: move .mp3 files up and remove extra folder
+        if model.startswith('htdemucs_ft'):
+            # After demucs, output is: stems/model/audio_file_name/*.mp3
+            audio_file_name = os.path.splitext(os.path.basename(audio_file))[0]
+            extra_folder = os.path.join(output_model_path, audio_file_name)
+            if os.path.exists(extra_folder):
+                for f in os.listdir(extra_folder):
+                    if f.endswith('.mp3'):
+                        src = os.path.join(extra_folder, f)
+                        dst = os.path.join(output_model_path, f)
+                        os.rename(src, dst)
+                # Remove the now-empty extra folder
+                os.rmdir(extra_folder)
 
-        # Clean up the empty model folder
         logging.info(f"Stem separation completed. Output folder: {output_model_path}")
         return output_model_path
     except subprocess.CalledProcessError as e:
@@ -193,3 +196,29 @@ def sanitize_folder_name(folder_name):
     # Trim leading and trailing whitespace
     sanitized_name = sanitized_name.strip()
     return sanitized_name
+
+def add_start_beat_to_audio(input_file, output_file, num_beats=4):
+    """Add a specified number of metronome beats to the start of an audio file."""
+    # Load the original audio
+    audio, sr = librosa.load(input_file, sr=None)
+    # Remove leading and trailing silence
+    audio, _ = librosa.effects.trim(audio, top_db=20)
+    # Automatically detect the tempo of the audio
+    tempo, _ = librosa.beat.beat_track(y=audio, sr=sr)
+    logging.info(f"Detected tempo: {tempo} BPM for start beat.")
+    # Calculate the duration of each beat in seconds
+    beat_duration = 60.0 / tempo
+    # Generate the click sound for one beat
+    t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False)
+    click_sound = 0.5 * np.sin(2 * np.pi * 440 * t)  # 440 Hz sine wave, 100 ms
+    # Create a silent segment to separate clicks (duration of beat minus click duration)
+    silence_duration = max(0, beat_duration - 0.1)
+    silence_length = int(float(sr * silence_duration))
+    silence = np.zeros(silence_length, dtype=np.float32)
+    # Create the full metronome beat pattern (alternating click + silence)
+    metronome = np.concatenate([np.concatenate([click_sound, silence]) for _ in range(num_beats)])
+    # Concatenate the metronome with the original audio
+    output_audio = np.concatenate([metronome, audio])
+    # Save the output audio to a file
+    sf.write(output_file, output_audio, sr)
+    logging.info(f"Audio saved to {output_file} with {num_beats} beats added at the detected tempo of {tempo} BPM.")
