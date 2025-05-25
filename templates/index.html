@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backing Track Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Fira+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(120deg, #232526, #414345);
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .music-header {
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .music-header i {
+            color: #ffb347;
+        }
+        .music-form {
+            background: rgba(30,30,40,0.95);
+            border-radius: 1.5rem;
+            padding: 2rem 2.5rem;
+            box-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
+        }
+        .progress-step {
+            font-family: 'Fira Mono', monospace;
+            font-size: 1.1rem;
+        }
+        .btn-music {
+            background: linear-gradient(90deg, #ffb347 0%, #ffcc33 100%);
+            color: #232526;
+            font-weight: bold;
+            border: none;
+        }
+        .btn-music:hover {
+            background: linear-gradient(90deg, #ffcc33 0%, #ffb347 100%);
+            color: #232526;
+        }
+        .music-icon {
+            font-size: 2.2rem;
+            color: #ffb347;
+        }
+        .form-label {
+            margin-top: 1rem;
+        }
+        .music-footer {
+            margin-top: 2rem;
+            font-size: 1rem;
+            color: #aaa;
+        }
+    </style>
+    <script src="https://kit.fontawesome.com/2c36e9b7b1.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <div class="music-header">
+                <i class="fas fa-guitar"></i> Backing Track Generator
+            </div>
+            <div class="lead">Create custom practice tracks from YouTube or your own files!</div>
+        </div>
+        <form id="musicForm" class="music-form" enctype="multipart/form-data">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">YouTube URL</label>
+                    <input type="url" class="form-control" name="youtube_url" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Or upload audio file</label>
+                    <input type="file" class="form-control" name="audio_file" accept="audio/*">
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Pitch Shift (semitones)</label>
+                    <input type="number" class="form-control" name="shift" value="0">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Demucs Model</label>
+                    <input type="text" class="form-control" name="model" value="htdemucs_ft">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Exclude Stem</label>
+                    <input type="text" class="form-control" name="exclude" placeholder="e.g. vocals, drums">
+                </div>
+            </div>
+            <div class="row g-3 align-items-center mt-2">
+                <div class="col-auto">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="include_beat" id="include_beat">
+                        <label class="form-check-label" for="include_beat">Include Beat Track</label>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="add_start_beat" id="add_start_beat">
+                        <label class="form-check-label" for="add_start_beat">Add Start Beat</label>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">Start Beat Clicks</label>
+                    <input type="number" class="form-control" name="start_beat_clicks" value="4" min="1" style="width: 80px;">
+                </div>
+            </div>
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-music btn-lg"><i class="fas fa-music"></i> Generate Backing Tracks</button>
+            </div>
+        </form>
+        <div class="mt-5">
+            <h5 class="mb-3"><i class="fas fa-tasks music-icon"></i> Progress</h5>
+            <ul class="list-group" id="progressList">
+                {% for step in steps %}
+                <li class="list-group-item bg-dark text-white progress-step" id="step-{{ loop.index }}">{{ step }}</li>
+                {% endfor %}
+            </ul>
+            <div id="progressMsg" class="mt-3"></div>
+        </div>
+        <div class="music-footer text-center">
+            <i class="fas fa-headphones-alt"></i> Made for musicians &middot; Powered by AI & Python
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('musicForm');
+        const progressList = document.getElementById('progressList');
+        const progressMsg = document.getElementById('progressMsg');
+        let intervalId = null;
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            progressMsg.innerHTML = '';
+            for (let i = 1; i <= progressList.children.length; i++) {
+                progressList.children[i-1].classList.remove('bg-success', 'bg-danger');
+            }
+            const formData = new FormData(form);
+            fetch('/process', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    progressMsg.innerHTML = '<span class="text-success">Done! Downloading results...</span>';
+                    for (let i = 1; i <= progressList.children.length; i++) {
+                        progressList.children[i-1].classList.add('bg-success');
+                    }
+                    response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'results.zip';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    });
+                } else {
+                    response.json().then(data => {
+                        progressMsg.innerHTML = '<span class="text-danger">' + (data.error || 'Error occurred') + '</span>';
+                        for (let i = 1; i <= progressList.children.length; i++) {
+                            progressList.children[i-1].classList.add('bg-danger');
+                        }
+                    });
+                }
+            });
+            // Poll progress
+            intervalId = setInterval(() => {
+                fetch('/progress').then(r => r.json()).then(data => {
+                    if (data.step) {
+                        for (let i = 1; i <= progressList.children.length; i++) {
+                            if (i <= data.step) {
+                                progressList.children[i-1].classList.add('bg-success');
+                            } else {
+                                progressList.children[i-1].classList.remove('bg-success');
+                            }
+                        }
+                    }
+                    if (data.message) {
+                        progressMsg.innerHTML = data.message;
+                    }
+                    if (data.step >= progressList.children.length || data.message.startsWith('Error')) {
+                        clearInterval(intervalId);
+                    }
+                });
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
